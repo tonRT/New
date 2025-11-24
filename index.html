@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoAI Analytics - Live Market Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-chart-line"></i>
+                <span>CryptoAI</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#home" class="nav-link active" data-page="home">Dashboard</a>
+                <a href="#coins" class="nav-link" data-page="coins">Coins</a>
+                <a href="#tools" class="nav-link" data-page="tools">Tools</a>
+                <a href="#news" class="nav-link" data-page="news">News</a>
+            </div>
+            <div class="nav-controls">
+                <button id="themeToggle" class="theme-btn">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="refreshBtn" class="refresh-btn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home Page -->
+        <section id="home" class="page active">
+            <div class="dashboard-header">
+                <h1>Market Overview</h1>
+                <div class="market-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalMarketCap">-</span>
+                            <span class="stat-label">Total Market Cap</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalVolume">-</span>
+                            <span class="stat-label">24h Volume</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="fearGreed">-</span>
+                            <span class="stat-label">Fear & Greed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="coinSearch" placeholder="Search for any cryptocurrency...">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+            </div>
+
+            <!-- Top Gainers & Losers -->
+            <div class="trending-section">
+                <div class="trending-card">
+                    <h3><i class="fas fa-rocket"></i> Top Gainers (24h)</h3>
+                    <div id="topGainers" class="coins-grid">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+                <div class="trending-card">
+                    <h3><i class="fas fa-bomb"></i> Top Losers (24h)</h3>
+                    <div id="topLosers" class="coins-grid">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Charts -->
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>Market Overview</h3>
+                    <div id="marketChart" class="chart-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Coins Page -->
+        <section id="coins" class="page">
+            <div class="page-header">
+                <h1>Cryptocurrency Analysis</h1>
+                <div class="filters">
+                    <select id="currencySelect">
+                        <option value="usd">USD</option>
+                        <option value="bdt">BDT</option>
+                        <option value="inr">INR</option>
+                        <option value="pkr">PKR</option>
+                    </select>
+                    <select id="sortSelect">
+                        <option value="market_cap">Market Cap</option>
+                        <option value="volume">Volume</option>
+                        <option value="price_change_24h">24h Change</option>
+                    </select>
+                </div>
+            </div>
+            <div id="coinsList" class="coins-list">
+                <!-- Dynamic content -->
+            </div>
+        </section>
+
+        <!-- Tools Page -->
+        <section id="tools" class="page">
+            <h1>Analytics Tools</h1>
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>Fear & Greed Index</h3>
+                    <div id="fearGreedMeter" class="gauge-container">
+                        <div class="gauge" id="fearGreedValue">50</div>
+                    </div>
+                    <p id="fearGreedText">Market sentiment analysis</p>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-gas-pump"></i>
+                    </div>
+                    <h3>Gas Fee Tracker</h3>
+                    <div id="gasFees" class="gas-fees">
+                        <div class="fee-tier">
+                            <span>Slow</span>
+                            <span id="slowGas">- Gwei</span>
+                        </div>
+                        <div class="fee-tier">
+                            <span>Standard</span>
+                            <span id="standardGas">- Gwei</span>
+                        </div>
+                        <div class="fee-tier">
+                            <span>Fast</span>
+                            <span id="fastGas">- Gwei</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h3>Portfolio Calculator</h3>
+                    <div class="portfolio-calc">
+                        <input type="text" id="calcAmount" placeholder="Investment amount">
+                        <select id="calcCoin">
+                            <option value="bitcoin">Bitcoin</option>
+                            <option value="ethereum">Ethereum</option>
+                        </select>
+                        <button id="calculateBtn">Calculate</button>
+                        <div id="calcResult" class="calc-result"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- News Page -->
+        <section id="news" class="page">
+            <h1>Latest Crypto News</h1>
+            <div id="newsFeed" class="news-grid">
+                <!-- Dynamic content -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Coin Detail Modal -->
+    <div id="coinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalCoinName">Bitcoin</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="coin-chart">
+                    <div id="coinPriceChart"></div>
+                </div>
+                <div class="coin-analysis">
+                    <h3>AI Analysis</h3>
+                    <div id="aiAnalysis" class="analysis-content">
+                        <!-- AI analysis content -->
+                    </div>
+                </div>
+                <div class="coin-stats">
+                    <div class="stat-row">
+                        <span>Pump Risk</span>
+                        <div class="risk-meter">
+                            <div class="risk-fill" id="pumpRisk"></div>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <span>Dump Risk</span>
+                        <div class="risk-meter">
+                            <div class="risk-fill" id="dumpRisk"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading market data...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
