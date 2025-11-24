@@ -3,19 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src https:;">
-    <title>CryptoAI Scalper - Live Signals</title>
+    <meta name="description" content="AI-Powered Crypto Scalping Signals - 100% Free">
+    <meta name="theme-color" content="#1a202c">
+    <title>CryptoAI Scalper Pro</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.mjs" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.mjs" as="script" crossorigin>
+    <link rel="preload" href="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js" as="script" crossorigin>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <div class="loading-text">Initializing AI Engine...</div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div class="loading-details" id="loadingDetails">Downloading Pyodide...</div>
+        </div>
+    </div>
+
     <header class="glass">
         <div class="logo">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/></svg>
-            <span>CryptoAI Scalper</span>
+            <span>CryptoAI Scalper Pro</span>
+            <span class="status-indicator" id="statusIndicator" title="Offline Mode">⚡</span>
         </div>
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search coins..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Search 100+ coins..." autocomplete="off">
             <div id="searchResults" class="search-results"></div>
         </div>
         <button id="themeToggle" class="neumorph-btn" aria-label="Toggle theme">
@@ -26,20 +41,18 @@
 
     <main>
         <section id="dashboard" class="dashboard-grid">
-            <div class="skeleton coin-card"></div>
-            <div class="skeleton coin-card"></div>
-            <div class="skeleton coin-card"></div>
+            <!-- Coins populated by JS -->
         </section>
 
         <section id="signalsPanel" class="signals-panel glass">
-            <h2>AI Scalping Signals</h2>
+            <h2>🤖 AI Scalping Signals (Live)</h2>
             <div id="signalDisplay" class="signal-display">
                 <div class="skeleton signal-skeleton"></div>
             </div>
         </section>
 
         <section id="chartSection" class="chart-section glass">
-            <h2>Live Chart</h2>
+            <h2>📊 Live Candlestick Chart</h2>
             <div id="chartContainer" class="chart-container">
                 <div class="skeleton chart-skeleton"></div>
             </div>
@@ -47,31 +60,31 @@
 
         <section id="marketSentiment" class="sentiment-grid">
             <div class="sentiment-card glass">
-                <h3>Fear & Greed Index</h3>
+                <h3>😰 Fear & Greed Index</h3>
                 <div id="fearGreed" class="skeleton">--</div>
             </div>
             <div class="sentiment-card glass">
-                <h3>Gas Price (Gwei)</h3>
+                <h3>⛽ Gas Price (Gwei)</h3>
                 <div id="gasPrice" class="skeleton">--</div>
             </div>
         </section>
 
         <section id="newsFeed" class="news-feed glass">
-            <h2>Latest News</h2>
+            <h2>📰 Latest Crypto News</h2>
             <div id="newsList" class="news-list">
-                <div class="skeleton news-item"></div>
                 <div class="skeleton news-item"></div>
             </div>
         </section>
     </main>
 
     <footer class="glass">
-        <p>© 2024 CryptoAI Scalper | Data from CoinGecko | AI by HuggingFace</p>
+        <p>© 2024 CryptoAI Scalper Pro | 100% Free & Offline-Capable</p>
     </footer>
 
     <div id="toast" class="toast"></div>
 
+    <!-- Scripts -->
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <script type="module" src="script.js"></script>
+    <script type="module" src="setup.js"></script>
 </body>
 </html>
