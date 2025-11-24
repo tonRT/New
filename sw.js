@@ -1,64 +1,58 @@
-// Service Worker for Offline Capability
-const CACHE_NAME = 'crypto-ai-trader-v1';
-const urlsToCache = [
+// ===== MOBILE SERVICE WORKER =====
+const CACHE_NAME = 'crypto-mobile-v1';
+const STATIC_FILES = [
     './',
     './index.html',
     './style.css',
-    './script.js',
     './setup.js',
+    './script.js',
     './analysis.py',
+    './manifest.json'
+];
+
+const CDN_FILES = [
     'https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js'
 ];
 
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+// ===== INSTALL =====
+self.addEventListener('install', (e) => {
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll([...STATIC_FILES, ...CDN_FILES]))
     );
     self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
-            );
-        })
+// ===== ACTIVATE =====
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then(keys => 
+            Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
+        )
     );
     self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') return;
-    
-    // Skip API calls (let them fail gracefully)
-    if (event.request.url.includes('api.coingecko.com') ||
-        event.request.url.includes('huggingface.co')) {
+// ===== FETCH =====
+self.addEventListener('fetch', (e) => {
+    // Skip API calls
+    if (e.request.url.includes('api.coingecko.com') || 
+        e.request.url.includes('huggingface.co') ||
+        e.request.url.includes('cryptopanic.com') ||
+        e.request.url.includes('blocknative.com')) {
         return;
     }
     
-    event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) return cachedResponse;
+    e.respondWith(
+        caches.match(e.request).then(cached => {
+            if (cached) return cached;
             
-            return fetch(event.request).then((response) => {
-                // Cache successful responses
-                if (response.ok) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
+            return fetch(e.request).then(res => {
+                if (res.ok) {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
                 }
-                return response;
-            }).catch(() => {
-                // Return offline page for HTML requests
-                if (event.request.destination === 'document') {
-                    return caches.match('./index.html');
-                }
-            });
+                return res;
+            }).catch(() => cached);
         })
     );
 });
