@@ -1,272 +1,293 @@
-#!/usr/bin/env python3
-"""
-Crypto Analysis Script
-Performs technical analysis and generates AI insights for cryptocurrencies
-"""
-
 import json
-import requests
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-import sys
+import math
+import statistics
+from typing import Dict, List, Any
 
-class CryptoAnalyzer:
-    def __init__(self):
-        self.base_url = "https://api.coingecko.com/api/v3"
-        
-    def fetch_coin_data(self, coin_id, days=7):
-        """Fetch historical data for a coin"""
-        try:
-            url = f"{self.base_url}/coins/{coin_id}/market_chart"
-            params = {
-                'vs_currency': 'usd',
-                'days': days,
-                'interval': 'hourly'
-            }
-            
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            print(f"Error fetching data for {coin_id}: {e}")
-            return None
+def calculate_rsi(prices: List[float], period: int = 14) -> float:
+    """Calculate Relative Strength Index"""
+    if len(prices) < period + 1:
+        return 50.0
     
-    def calculate_technical_indicators(self, prices):
-        """Calculate technical indicators from price data"""
-        if len(prices) < 14:  # Need enough data for indicators
-            return {}
-        
-        df = pd.DataFrame(prices, columns=['timestamp', 'price'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df.set_index('timestamp', inplace=True)
-        
-        # Simple Moving Averages
-        df['sma_7'] = df['price'].rolling(window=7).mean()
-        df['sma_25'] = df['price'].rolling(window=25).mean()
-        
-        # RSI
-        df['price_diff'] = df['price'].diff()
-        df['gain'] = np.where(df['price_diff'] > 0, df['price_diff'], 0)
-        df['loss'] = np.where(df['price_diff'] < 0, -df['price_diff'], 0)
-        
-        avg_gain = df['gain'].rolling(window=14).mean()
-        avg_loss = df['loss'].rolling(window=14).mean()
-        
-        rs = avg_gain / avg_loss
-        df['rsi'] = 100 - (100 / (1 + rs))
-        
-        # MACD
-        exp1 = df['price'].ewm(span=12).mean()
-        exp2 = df['price'].ewm(span=26).mean()
-        df['macd'] = exp1 - exp2
-        df['macd_signal'] = df['macd'].ewm(span=9).mean()
-        df['macd_histogram'] = df['macd'] - df['macd_signal']
-        
-        # Volatility
-        df['returns'] = df['price'].pct_change()
-        df['volatility'] = df['returns'].rolling(window=24).std() * np.sqrt(24) * 100
-        
-        # Get latest values
-        latest = df.iloc[-1]
-        
-        return {
-            'current_price': latest['price'],
-            'sma_7': latest['sma_7'],
-            'sma_25': latest['sma_25'],
-            'rsi': latest['rsi'],
-            'macd': latest['macd'],
-            'macd_signal': latest['macd_signal'],
-            'volatility': latest['volatility'],
-            'trend': 'bullish' if latest['sma_7'] > latest['sma_25'] else 'bearish'
-        }
+    gains = []
+    losses = []
     
-    def analyze_sentiment(self, indicators, price_change_24h, volume):
-        """Generate AI-like sentiment analysis based on technical indicators"""
-        
-        # Risk scoring
-        pump_risk = 0
-        dump_risk = 0
-        
-        # RSI-based signals
-        if indicators['rsi'] > 70:
-            pump_risk += 30
-        elif indicators['rsi'] < 30:
-            dump_risk += 30
-        
-        # MACD signals
-        if indicators['macd'] > indicators['macd_signal']:
-            pump_risk += 20
+    for i in range(1, len(prices)):
+        change = prices[i] - prices[i-1]
+        if change > 0:
+            gains.append(change)
+            losses.append(0.0)
         else:
-            dump_risk += 20
-        
-        # Price momentum
-        if price_change_24h > 10:
-            pump_risk += 25
-        elif price_change_24h < -10:
-            dump_risk += 25
-        
-        # Volatility adjustment
-        if indicators['volatility'] > 15:
-            pump_risk += 15
-            dump_risk += 15
-        
-        # Volume consideration (simplified)
-        if volume > 1000000000:  # High volume
-            if price_change_24h > 0:
-                pump_risk += 10
-            else:
-                dump_risk += 10
-        
-        # Cap risks at 100
-        pump_risk = min(pump_risk, 100)
-        dump_risk = min(dump_risk, 100)
-        
+            gains.append(0.0)
+            losses.append(abs(change))
+    
+    avg_gain = statistics.mean(gains[-period:]) if gains else 0
+    avg_loss = statistics.mean(losses[-period:]) if losses else 0
+    
+    if avg_loss == 0:
+        return 100.0
+    
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    return rsi
+
+def calculate_sma(prices: List[float], period: int) -> float:
+    """Calculate Simple Moving Average"""
+    if len(prices) < period:
+        return prices[-1] if prices else 0
+    return statistics.mean(prices[-period:])
+
+def calculate_ema(prices: List[float], period: int) -> float:
+    """Calculate Exponential Moving Average"""
+    if len(prices) < period:
+        return prices[-1] if prices else 0
+    
+    multiplier = 2 / (period + 1)
+    ema = prices[0]
+    
+    for price in prices[1:]:
+        ema = (price - ema) * multiplier + ema
+    
+    return ema
+
+def calculate_macd(prices: List[float]) -> Dict[str, float]:
+    """Calculate MACD (Moving Average Convergence Divergence)"""
+    ema_12 = calculate_ema(prices, 12)
+    ema_26 = calculate_ema(prices, 26)
+    macd_line = ema_12 - ema_26
+    signal_line = calculate_ema([macd_line] * 9, 9)  # Simplified signal line
+    histogram = macd_line - signal_line
+    
+    return {
+        'macd': macd_line,
+        'signal': signal_line,
+        'histogram': histogram
+    }
+
+def calculate_bollinger_bands(prices: List[float], period: int = 20) -> Dict[str, float]:
+    """Calculate Bollinger Bands"""
+    if len(prices) < period:
+        current_price = prices[-1] if prices else 0
         return {
-            'pump_risk': int(pump_risk),
-            'dump_risk': int(dump_risk),
-            'sentiment': self.get_sentiment_text(pump_risk, dump_risk, indicators['trend']),
-            'next_hour_prediction': self.generate_prediction(indicators, price_change_24h)
+            'upper': current_price * 1.1,
+            'middle': current_price,
+            'lower': current_price * 0.9
         }
     
-    def get_sentiment_text(self, pump_risk, dump_risk, trend):
-        """Generate human-readable sentiment analysis"""
-        if pump_risk > 70:
-            return "🚨 HIGH PUMP RISK - Strong upward momentum detected"
-        elif dump_risk > 70:
-            return "📉 HIGH DUMP RISK - Significant downward pressure"
-        elif trend == 'bullish' and pump_risk > dump_risk:
-            return "📈 BULLISH - Positive momentum with moderate risk"
-        elif trend == 'bearish' and dump_risk > pump_risk:
-            return "📉 BEARISH - Negative momentum with caution advised"
-        else:
-            return "⚡ NEUTRAL - Market consolidating, watch for breakout"
+    sma = calculate_sma(prices, period)
+    std_dev = statistics.stdev(prices[-period:])
     
-    def generate_prediction(self, indicators, price_change_24h):
-        """Generate next hour price prediction"""
-        rsi = indicators['rsi']
-        macd_signal = indicators['macd'] - indicators['macd_signal']
-        trend = indicators['trend']
-        
-        if rsi < 30 and macd_signal > 0:
-            confidence = "HIGH"
-            direction = "UP"
-            reason = "Oversold with bullish MACD crossover"
-        elif rsi > 70 and macd_signal < 0:
-            confidence = "HIGH"
-            direction = "DOWN"
-            reason = "Overbought with bearish MACD crossover"
-        elif trend == 'bullish' and price_change_24h > 0:
-            confidence = "MEDIUM"
-            direction = "UP"
-            reason = "Bullish trend continuation"
-        elif trend == 'bearish' and price_change_24h < 0:
-            confidence = "MEDIUM"
-            direction = "DOWN"
-            reason = "Bearish trend continuation"
-        else:
-            confidence = "LOW"
-            direction = "SIDEWAYS"
-            reason = "Mixed signals, consolidation likely"
-        
-        return {
-            'direction': direction,
-            'confidence': confidence,
-            'reason': reason,
-            'expected_move': f"0.5-2%"  # Simplified estimate
-        }
-    
-    def analyze_coin(self, coin_id, price_change_24h, volume):
-        """Main analysis function for a coin"""
-        print(f"Analyzing {coin_id}...")
-        
-        # Fetch historical data
-        data = self.fetch_coin_data(coin_id)
-        if not data:
-            return None
-        
-        prices = data['prices']
-        
-        # Calculate technical indicators
-        indicators = self.calculate_technical_indicators(prices)
-        if not indicators:
-            return None
-        
-        # Generate sentiment analysis
-        sentiment = self.analyze_sentiment(indicators, price_change_24h, volume)
-        
-        # Compile full analysis
-        analysis = {
-            'coin_id': coin_id,
-            'timestamp': datetime.now().isoformat(),
-            'technical_indicators': indicators,
-            'sentiment_analysis': sentiment,
-            'summary': self.generate_summary(indicators, sentiment)
-        }
-        
-        return analysis
-    
-    def generate_summary(self, indicators, sentiment):
-        """Generate a comprehensive summary"""
-        return f"""
-Technical Overview:
-- RSI: {indicators['rsi']:.1f} ({'Overbought' if indicators['rsi'] > 70 else 'Oversold' if indicators['rsi'] < 30 else 'Neutral'})
-- Trend: {indicators['trend'].upper()}
-- Volatility: {indicators['volatility']:.1f}%
+    return {
+        'upper': sma + (std_dev * 2),
+        'middle': sma,
+        'lower': sma - (std_dev * 2)
+    }
 
-Risk Assessment:
-- Pump Risk: {sentiment['pump_risk']}% ({'High' if sentiment['pump_risk'] > 70 else 'Medium' if sentiment['pump_risk'] > 30 else 'Low'})
-- Dump Risk: {sentiment['dump_risk']}% ({'High' if sentiment['dump_risk'] > 70 else 'Medium' if sentiment['dump_risk'] > 30 else 'Low'})
-
-Prediction:
-- Next Hour: {sentiment['next_hour_prediction']['direction']} with {sentiment['next_hour_prediction']['confidence']} confidence
-- Reason: {sentiment['next_hour_prediction']['reason']}
-        """.strip()
+def calculate_stochastic_rsi(rsi_values: List[float], period: int = 14) -> float:
+    """Calculate Stochastic RSI"""
+    if len(rsi_values) < period:
+        return 50.0
     
-    def save_analysis(self, analysis, filename=None):
-        """Save analysis to JSON file"""
-        if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"crypto_analysis_{timestamp}.json"
-        
-        with open(filename, 'w') as f:
-            json.dump(analysis, f, indent=2)
-        
-        print(f"Analysis saved to {filename}")
-        return filename
-
-def main():
-    """Main function for command line usage"""
-    analyzer = CryptoAnalyzer()
+    current_rsi = rsi_values[-1]
+    min_rsi = min(rsi_values[-period:])
+    max_rsi = max(rsi_values[-period:])
     
-    if len(sys.argv) > 1:
-        coin_id = sys.argv[1]
-        price_change = float(sys.argv[2]) if len(sys.argv) > 2 else 0
-        volume = float(sys.argv[3]) if len(sys.argv) > 3 else 0
+    if max_rsi == min_rsi:
+        return 50.0
+    
+    stoch_rsi = (current_rsi - min_rsi) / (max_rsi - min_rsi) * 100
+    return stoch_rsi
+
+def calculate_vwap(high_prices: List[float], low_prices: List[float], close_prices: List[float], volumes: List[float]) -> float:
+    """Calculate Volume Weighted Average Price"""
+    if not all([high_prices, low_prices, close_prices, volumes]):
+        return close_prices[-1] if close_prices else 0
+    
+    typical_prices = [(h + l + c) / 3 for h, l, c in zip(high_prices, low_prices, close_prices)]
+    vwap = sum(tp * v for tp, v in zip(typical_prices, volumes)) / sum(volumes)
+    return vwap
+
+def analyze_trend(prices: List[float]) -> str:
+    """Analyze price trend"""
+    if len(prices) < 5:
+        return "SIDEWAYS"
+    
+    short_term = statistics.mean(prices[-5:])
+    medium_term = statistics.mean(prices[-10:]) if len(prices) >= 10 else short_term
+    long_term = statistics.mean(prices[-20:]) if len(prices) >= 20 else medium_term
+    
+    if short_term > medium_term > long_term:
+        return "STRONG_UPTREND"
+    elif short_term > medium_term:
+        return "UPTREND"
+    elif short_term < medium_term < long_term:
+        return "STRONG_DOWNTREND"
+    elif short_term < medium_term:
+        return "DOWNTREND"
     else:
-        # Default analysis for Bitcoin
-        coin_id = "bitcoin"
-        price_change = 0
-        volume = 0
-    
-    print(f"Starting analysis for {coin_id}...")
-    
-    analysis = analyzer.analyze_coin(coin_id, price_change, volume)
-    
-    if analysis:
-        print("\n" + "="*50)
-        print(f"ANALYSIS REPORT: {coin_id.upper()}")
-        print("="*50)
-        print(analysis['summary'])
-        print("\nFull analysis saved to JSON file.")
-        
-        # Save to file
-        filename = analyzer.save_analysis(analysis)
-        
-        return analysis
-    else:
-        print(f"Failed to analyze {coin_id}")
-        return None
+        return "SIDEWAYS"
 
+def calculate_support_resistance(prices: List[float]) -> Dict[str, float]:
+    """Calculate support and resistance levels"""
+    if len(prices) < 10:
+        current_price = prices[-1] if prices else 0
+        return {
+            'support_1': current_price * 0.95,
+            'support_2': current_price * 0.90,
+            'resistance_1': current_price * 1.05,
+            'resistance_2': current_price * 1.10
+        }
+    
+    # Simplified S/R calculation using recent highs and lows
+    recent_high = max(prices[-10:])
+    recent_low = min(prices[-10:])
+    current_price = prices[-1]
+    price_range = recent_high - recent_low
+    
+    return {
+        'support_1': recent_low + price_range * 0.2,
+        'support_2': recent_low,
+        'resistance_1': recent_high - price_range * 0.2,
+        'resistance_2': recent_high
+    }
+
+def generate_trading_signal(analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate trading signal based on technical analysis"""
+    rsi = analysis['rsi']
+    macd = analysis['macd']
+    trend = analysis['trend']
+    volatility = analysis['volatility']
+    
+    # Signal logic
+    signal_strength = 0
+    signal = "HOLD"
+    
+    # RSI based signals
+    if rsi < 30:
+        signal_strength += 3
+        signal = "BUY"
+    elif rsi > 70:
+        signal_strength += 3
+        signal = "SELL"
+    
+    # MACD based signals
+    if macd['macd'] > macd['signal']:
+        signal_strength += 2
+        if signal == "HOLD":
+            signal = "BUY"
+    else:
+        signal_strength += 1
+        if signal == "HOLD":
+            signal = "SELL"
+    
+    # Trend based signals
+    if "UPTREND" in trend:
+        signal_strength += 2
+        if signal == "SELL":
+            signal = "HOLD"
+    elif "DOWNTREND" in trend:
+        signal_strength += 2
+        if signal == "BUY":
+            signal = "HOLD"
+    
+    # Volatility adjustment
+    if volatility == "HIGH":
+        signal_strength = max(1, signal_strength - 1)
+    
+    signal_strength = min(10, signal_strength)
+    
+    return {
+        'signal': signal,
+        'signal_strength': signal_strength,
+        'confidence': min(95, signal_strength * 10 + 5)
+    }
+
+def analyze_crypto(market_data: Dict[str, Any]) -> str:
+    """Main analysis function that returns JSON string of analysis results"""
+    
+    # Simulate price history for demonstration
+    # In production, this would use real historical data
+    current_price = market_data['current_price']
+    price_history = [current_price * (0.95 + i * 0.01) for i in range(50)]
+    
+    # Calculate indicators
+    rsi = calculate_rsi(price_history)
+    sma_20 = calculate_sma(price_history, 20)
+    ema_12 = calculate_ema(price_history, 12)
+    macd = calculate_macd(price_history)
+    bollinger = calculate_bollinger_bands(price_history)
+    stoch_rsi = calculate_stochastic_rsi([rsi] * 14)  # Simplified
+    
+    # Calculate trend
+    trend = analyze_trend(price_history)
+    
+    # Calculate volatility
+    price_changes = [abs(price_history[i] - price_history[i-1]) for i in range(1, len(price_history))]
+    avg_change = statistics.mean(price_changes) if price_changes else 0
+    volatility = "HIGH" if avg_change > current_price * 0.02 else "LOW"
+    
+    # Support and resistance
+    sr_levels = calculate_support_resistance(price_history)
+    
+    # Generate trading signal
+    preliminary_analysis = {
+        'rsi': rsi,
+        'macd': macd,
+        'trend': trend,
+        'volatility': volatility
+    }
+    signal_data = generate_trading_signal(preliminary_analysis)
+    
+    # RSI signal interpretation
+    if rsi < 30:
+        rsi_signal = "OVERSOLD"
+    elif rsi > 70:
+        rsi_signal = "OVERBOUGHT"
+    else:
+        rsi_signal = "NEUTRAL"
+    
+    # MACD signal interpretation
+    if macd['macd'] > macd['signal']:
+        macd_signal = "BULLISH"
+    else:
+        macd_signal = "BEARISH"
+    
+    # Final analysis result
+    analysis_result = {
+        'rsi': rsi,
+        'rsi_signal': rsi_signal,
+        'sma_20': sma_20,
+        'ema_12': ema_12,
+        'macd': macd['macd'],
+        'macd_signal': macd_signal,
+        'bollinger_upper': bollinger['upper'],
+        'bollinger_lower': bollinger['lower'],
+        'stoch_rsi': stoch_rsi,
+        'trend': trend,
+        'volatility': volatility,
+        'support_1': sr_levels['support_1'],
+        'support_2': sr_levels['support_2'],
+        'resistance_1': sr_levels['resistance_1'],
+        'resistance_2': sr_levels['resistance_2'],
+        'signal': signal_data['signal'],
+        'signal_strength': signal_data['signal_strength'],
+        'confidence': signal_data['confidence'],
+        'overall_signal': f"{signal_data['signal']} (Strength: {signal_data['signal_strength']}/10)"
+    }
+    
+    return json.dumps(analysis_result)
+
+# Example usage for testing
 if __name__ == "__main__":
-    main()
+    sample_data = {
+        'current_price': 45000.0,
+        'price_change_24h': 1500.0,
+        'price_change_percentage_24h': 3.45,
+        'market_cap': 850000000000,
+        'volume': 25000000000,
+        'high_24h': 45500.0,
+        'low_24h': 44500.0
+    }
+    
+    result = analyze_crypto(sample_data)
+    print("Analysis Result:", result)
